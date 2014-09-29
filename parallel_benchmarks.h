@@ -16,7 +16,7 @@ typedef struct {
 	         deletions,
 	         real_insertions,
 	         real_deletions;
-
+    long long int value_sum;        
 #ifdef WORKLOAD_TIME
 	unsigned int time_to_leave;
 #endif

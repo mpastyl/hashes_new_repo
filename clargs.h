@@ -12,7 +12,8 @@ typedef struct {
 	    lookup_frac,
 		insert_frac,
 	    init_seed,
-	    thread_seed;
+	    thread_seed,
+        verify;
 #ifdef WORKLOAD_TIME
 	int run_time_sec;
 #endif

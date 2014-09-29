@@ -59,6 +59,19 @@ unsigned int list_length(struct node_t * Head){
     return ret;
 }
 
+long long  int list_sum(struct node_t * Head){
+    
+    struct node_t * curr;
+	long long int ret = 0;
+    
+    curr=Head;
+    while(curr){
+		ret+=curr->value;
+        curr=curr->next;
+    }
+
+    return ret;
+}
 //search value in bucket;
 int list_search(struct node_t * Head,int val){
     
@@ -260,6 +273,31 @@ void print_set_length(struct HashSet *H)
 	printf("Total: %8u\n", total_elements);
 }
 
+int find_elements_count(struct HashSet *H){
+    int i;
+	unsigned int total_elements = 0;
+
+    for(i=0;i<H->capacity;i++) {
+		unsigned int ll = list_length(H->table[i]);
+		//printf("Bucket %6d: %8u elements\n", i, ll);
+		total_elements += ll;
+	}
+	//printf("Total: %8u\n", total_elements);
+    return total_elements;
+}
+
+long long int find_elements_sum(struct HashSet *H){
+    int i;
+	long long int total_sum = 0;
+
+    for(i=0;i<H->capacity;i++) {
+		long long int ll = list_sum(H->table[i]);
+		//printf("Bucket %6d: %8u elements\n", i, ll);
+		total_sum += ll;
+	}
+	//printf("Total: %8u\n", total_elements);
+    return total_sum;
+}
 /* Arrange the N elements of ARRAY in random order.
    Only effective if N is much smaller than RAND_MAX;
    if this may not be the case, use a better random

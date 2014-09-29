@@ -19,6 +19,8 @@ struct HashSet ht;
 static pthread_t *threads;
 static params_t *params;
 static pthread_barrier_t barrier;
+int elements_count=0;
+long long int total_value_sum=0;
 
 static void params_print()
 {
@@ -35,7 +37,30 @@ static void params_print()
 		total_lookups += params[i].lookups;
 		total_insertions += params[i].insertions;
 		total_deletions += params[i].deletions;
+        if (clargs.verify == 1){
+            elements_count += params[i].real_insertions;
+            elements_count -= params[i].real_deletions;
+            total_value_sum += params[i].value_sum;
+        }
 	}
+
+        
+    if (clargs.verify==1){
+        printf("\nTest1 start!\n");
+        int expected_count = find_elements_count(&ht);
+        if(expected_count == elements_count) printf("Test1 PASSED\n\n");
+        else{
+            printf("Test1 FAILED\n");
+            printf(" elements in HT == %d , elements_counted == %d\n\n",expected_count,elements_count);
+        }
+        printf("\nTest2 start!\n");
+        long long int expected_sum = find_elements_sum(&ht);
+        if(expected_sum == total_value_sum) printf("Test2 PASSED\n\n");
+        else{
+            printf("Test2 FAILED\n");
+            printf(" expected sum == %lld , sum found== %lld\n\n",expected_sum,total_value_sum);
+        }
+    }
 	printf("%10s %8d ( %8d %8d %8d )\n", "TotalStat",
 	       total_operations, total_lookups, 
 	       total_insertions, total_deletions);
@@ -89,14 +114,20 @@ void *thread_fn(void *args)
 
 		if (choice < clargs.insert_frac) {         /* insert   */
 			params->insertions++;
-			Insert(&ht, key, params);
+			if( Insert(&ht, key, params)) {
+                params->real_insertions++;
+                params->value_sum += key;
+            }
 		} else if (choice < clargs.insert_frac + 
 		                    clargs.lookup_frac) {  /* lookup   */
 			params->lookups++;
-			Erase(&ht, key, params);
+			Lookup(&ht, key, params);
 		} else {                                   /* deletion */
 			params->deletions++;
-			Lookup(&ht, key, params);
+			if( Erase(&ht, key, params) ) {
+                params->real_deletions++;
+                params->value_sum -= key;
+            }
 		}
 	}
 
@@ -128,8 +159,15 @@ double pthreads_benchmark()
 	/* Initialize the Hash Table */
 	printf("Initializing at %d\n", clargs.init_hash_size);
 	initialize(&ht, clargs.init_hash_size);
+    int res;
 	for (i=0; i < clargs.init_insertions; i++) {
-		Insert(&ht, i, &init_params);
+		res = Insert(&ht, i, &init_params);
+        if(clargs.verify==1) {
+            if (res){
+                elements_count++;
+                total_value_sum+=i;
+            }
+        }
 	}
 
 	wall_timer = timer_init();
