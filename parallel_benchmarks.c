@@ -11,7 +11,8 @@
 #include "clargs.h"
 #include "aff.h"
 
-#include "global_lock.h"
+//#include "global_lock.h"
+#include "striped.h"
 
 /* The Hash Table */
 struct HashSet ht;
@@ -158,7 +159,12 @@ double pthreads_benchmark()
 
 	/* Initialize the Hash Table */
 	printf("Initializing at %d\n", clargs.init_hash_size);
+#ifdef __STRIPED_H
+	initialize(&ht, clargs.init_hash_size,clargs.starting_locks);
+	//initialize(&ht, clargs.init_hash_size,16);
+#else
 	initialize(&ht, clargs.init_hash_size);
+#endif
     int res;
 	for (i=0; i < clargs.init_insertions; i++) {
 		res = Insert(&ht, i, &init_params);
