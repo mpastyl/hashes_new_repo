@@ -17,7 +17,7 @@ typedef struct {
 #ifdef WORKLOAD_TIME
 	int run_time_sec;
 #endif
-#ifdef __STRIPED_H
+#ifdef STRIPED
     int starting_locks;
 #endif
 } clargs_t;

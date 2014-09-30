@@ -18,8 +18,8 @@
 #ifdef WORKLOAD_TIME
 #  define ARGUMENT_DEFAULT_RUN_TIME_SEC 5
 #endif
-#ifdef __STRIPED_H
-#  define ARGUEMENT_DEFAULT_STARTING_LOCKS 16
+#ifdef STRIPED
+#  define ARGUMENT_DEFAULT_STARTING_LOCKS 16
 #endif
 
 static char *opt_string = "ht:s:m:i:l:r:e:j:z:v:x:";
@@ -27,7 +27,7 @@ static struct option long_options[] = {
 	{ "help",            no_argument,       NULL, 'h' },
 	{ "num-threads",     required_argument, NULL, 't' },
 	{ "init-hash-size",  required_argument, NULL, 's' },
-	{ "init-insertion",  required_argument, NULL, 'z' },
+	{ "init-insertions",  required_argument, NULL, 'z' },
 	{ "max-key",         required_argument, NULL, 'm' },
 	{ "lookup-frac",     required_argument, NULL, 'l' },
 	{ "insert-frac",     required_argument, NULL, 'i' },
@@ -38,7 +38,7 @@ static struct option long_options[] = {
 #ifdef WORKLOAD_TIME
 	{ "run-time-sec",    required_argument, NULL, 'r' },
 #endif
-#ifdef __STRIPED_H
+#ifdef STRIPED
     { "starting-locks",  required_argument, NULL, 'x' },
 #endif
 	{ NULL, 0, NULL, 0 }
@@ -53,14 +53,13 @@ clargs_t clargs = {
 	ARGUMENT_DEFAULT_INSERT_FRAC,
 	ARGUMENT_DEFAULT_INIT_SEED,
 	ARGUMENT_DEFAULT_THREAD_SEED,
-    ARGUMENT_DEFAULT_VERIFY
+    ARGUMENT_DEFAULT_VERIFY,
 #ifdef WORKLOAD_TIME
-	,ARGUMENT_DEFAULT_RUN_TIME_SEC
+	ARGUMENT_DEFAULT_RUN_TIME_SEC,
 #endif
-#ifdef __STRIPED_H
-    ,ARGUMENT_DEFAULT_STARTING_LOCKS
+#ifdef STRIPED
+    ARGUMENT_DEFAULT_STARTING_LOCKS,
 #endif
-
 };
 
 static void clargs_print_usage(char *progname)
@@ -88,7 +87,7 @@ static void clargs_print_usage(char *progname)
 	printf("    -r,--run-time-sec execution time [%d sec]\n",
 			ARGUMENT_DEFAULT_RUN_TIME_SEC);
 #endif
-#ifdef __STRIPED_H
+#ifdef STRIPED
     printf("    -x--starting locks for striped implementation[%d]\n",
             ARGUMENT_DEFAULT_STARTING_LOCKS);
 #endif
@@ -141,7 +140,7 @@ void clargs_init(int argc, char **argv)
 			clargs.run_time_sec = atoi(optarg);
 			break;
 #endif
-#ifdef __STRIPED_H
+#ifdef STRIPED
         case 'x':
             clargs.starting_locks = atoi(optarg);
             break;
@@ -176,7 +175,7 @@ void clargs_print()
 #ifdef WORKLOAD_TIME
 	printf("  run_time_sec: %d\n", clargs.run_time_sec);
 #endif
-#ifdef __STRIPED_H
+#ifdef STRIPED
     printf("  starting locks: %d\n",clargs.starting_locks);
 #endif
 }

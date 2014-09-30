@@ -11,9 +11,15 @@
 #include "clargs.h"
 #include "aff.h"
 
-//#include "global_lock.h"
-//#include "striped.h"
-#include "refinable.h"
+#ifdef GLOBAL_LOCK
+#	include "global_lock.h"
+#elif defined(STRIPED)
+#	include "striped.h"
+#elif defined(REFINABLE)
+#	include "refinable.h"
+#else
+#	error "Please define a queue type\n"
+#endif
 
 /* The Hash Table */
 struct HashSet ht;
@@ -160,7 +166,7 @@ double pthreads_benchmark()
 
 	/* Initialize the Hash Table */
 	printf("Initializing at %d\n", clargs.init_hash_size);
-#ifdef __STRIPED_H
+#ifdef STRIPED
 	initialize(&ht, clargs.init_hash_size,clargs.starting_locks);
 	//initialize(&ht, clargs.init_hash_size,16);
 #else
