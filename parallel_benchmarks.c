@@ -12,7 +12,8 @@
 #include "aff.h"
 
 //#include "global_lock.h"
-#include "striped.h"
+//#include "striped.h"
+#include "refinable.h"
 
 /* The Hash Table */
 struct HashSet ht;

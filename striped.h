@@ -225,9 +225,17 @@ void resize(struct HashSet *H,params_t *params){
     int i;
     struct node_t * curr;
     int old_capacity = H->capacity;
-    for(i=0;i<H->locks_length;i++) lock_set(H,i);
+    for(i=0;i<H->locks_length;i++) {
+	    tsc_start(&params->insert_lock_set_tsc);
+        lock_set(H,i);
+	    tsc_pause(&params->insert_lock_set_tsc);
+    }
     if(old_capacity!=H->capacity) {
-        for(i=0;i<H->locks_length;i++) unlock_set(H,i);
+        for(i=0;i<H->locks_length;i++) {
+	        tsc_start(&params->insert_lock_set_tsc);
+            unlock_set(H,i);
+	        tsc_pause(&params->insert_lock_set_tsc);
+        }
         return; //somebody beat us to it
     }
     int new_capacity =  old_capacity * 2;

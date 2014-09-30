@@ -163,7 +163,7 @@ int policy(struct HashSet *H){
 	return 0;
 }
 
-void resize(struct HashSet *);
+void resize(struct HashSet *,params_t *params);
 
 int contains(struct HashSet *H,int hash_code, int val, params_t *params){
     
@@ -194,7 +194,7 @@ void add(struct HashSet *H,int hash_code, int val, int reentrant, params_t *para
 		unlock_set(H);
 		tsc_pause(&params->insert_lock_set_tsc);
 	}
-    if (policy(H)) resize(H);
+    if (policy(H)) resize(H,params);
 }
 
 int _delete(struct HashSet *H,int hash_code, int val, params_t *params){
@@ -212,12 +212,14 @@ int _delete(struct HashSet *H,int hash_code, int val, params_t *params){
 }
 
 
-void resize(struct HashSet *H){
+void resize(struct HashSet *H,params_t *params){
     
     int i;
     struct node_t * curr;
     int old_capacity = H->capacity;
+	tsc_start(&params->insert_lock_set_tsc);
     lock_set(H);
+	tsc_pause(&params->insert_lock_set_tsc);
     if(old_capacity!=H->capacity){
         unlock_set(H);
         return; //somebody beat us to it
@@ -243,7 +245,9 @@ void resize(struct HashSet *H){
         }
     }
     free(old_table);
+	tsc_start(&params->insert_lock_set_tsc);
     unlock_set(H);
+	tsc_pause(&params->insert_lock_set_tsc);
 }
 
 void print_set(struct HashSet * H){
