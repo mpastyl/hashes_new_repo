@@ -21,6 +21,11 @@ typedef struct {
 	unsigned int time_to_leave;
 #endif
 
+#ifdef SPLIT_ORDERED
+    unsigned long long *prev;
+    unsigned long long curr;
+    unsigned long long next;
+#endif
 	tsc_t insert_lock_set_tsc;
 
 //	tsc_t operations_tsc;
