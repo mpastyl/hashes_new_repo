@@ -17,6 +17,8 @@
 #	include "striped.h"
 #elif defined(REFINABLE)
 #	include "refinable.h"
+#elif defined(SPLIT_ORDERED)
+#   include "split_ordered.h"
 #else
 #	error "Please define a queue type\n"
 #endif
