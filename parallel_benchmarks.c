@@ -19,6 +19,10 @@
 #	include "refinable.h"
 #elif defined(SPLIT_ORDERED)
 #   include "split_ordered.h"
+#elif defined(CUCKOO)
+#   include "cuckoo.h"
+#elif defined(NON_BLOCKING)
+#   include "non_blocking.h"
 #else
 #	error "Please define a queue type\n"
 #endif

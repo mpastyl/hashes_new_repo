@@ -10,7 +10,7 @@ CFLAGS += -DCPU_MHZ_SH=\"./cpu_mhz.sh\"
 
 #LDFLAGS = -L/home/users/jimsiak/local/lib/ -ltcmalloc
 
-PROGS =  main.global_lock main.striped main.refinable main.split_ordered
+PROGS =  main.global_lock main.striped main.refinable main.split_ordered main.cuckoo main.non_blocking
 
 all: $(PROGS)
 
@@ -27,6 +27,12 @@ main.refinable: $(SRC)
 
 main.split_ordered: $(SRC)
 	$(CC) $(CFLAGS) -DSPLIT_ORDERED -o $@ $^
+
+main.cuckoo: $(SRC)
+	$(CC) $(CFLAGS) -DCUCKOO -o $@ $^
+
+main.non_blocking: $(SRC)
+	$(CC) $(CFLAGS) -DNON_BLOCKING -o $@ $^
 
 clean:
 	rm -f $(PROGS)
