@@ -172,7 +172,10 @@ double pthreads_benchmark()
 
 	/* Initialize the Hash Table */
 	printf("Initializing at %d\n", clargs.init_hash_size);
-#ifdef STRIPED
+#ifdef CUCKOO
+	initialize(&ht, clargs.init_hash_size,clargs.threshold);
+	//initialize(&ht, clargs.init_hash_size,16);
+#elif defined(STRIPED)
 	initialize(&ht, clargs.init_hash_size,clargs.starting_locks);
 	//initialize(&ht, clargs.init_hash_size,16);
 #else

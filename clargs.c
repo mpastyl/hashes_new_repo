@@ -21,8 +21,11 @@
 #ifdef STRIPED
 #  define ARGUMENT_DEFAULT_STARTING_LOCKS 16
 #endif
+#ifdef CUCKOO
+#  define ARGUMENT_DEFAULT_THRESHOLD 300
+#endif 
 
-static char *opt_string = "ht:s:m:i:l:r:e:j:z:v:x:";
+static char *opt_string = "ht:s:m:i:l:r:e:j:z:v:x:k:";
 static struct option long_options[] = {
 	{ "help",            no_argument,       NULL, 'h' },
 	{ "num-threads",     required_argument, NULL, 't' },
@@ -40,6 +43,9 @@ static struct option long_options[] = {
 #endif
 #ifdef STRIPED
     { "starting-locks",  required_argument, NULL, 'x' },
+#endif
+#ifdef CUCKOO
+    { "threshold",       required_argument, NULL, 'y' },
 #endif
 	{ NULL, 0, NULL, 0 }
 };
@@ -59,6 +65,9 @@ clargs_t clargs = {
 #endif
 #ifdef STRIPED
     ARGUMENT_DEFAULT_STARTING_LOCKS,
+#endif
+#ifdef CUCKOO
+    ARGUMENT_DEFAULT_THRESHOLD,
 #endif
 };
 
@@ -91,7 +100,12 @@ static void clargs_print_usage(char *progname)
     printf("    -x--starting locks for striped implementation[%d]\n",
             ARGUMENT_DEFAULT_STARTING_LOCKS);
 #endif
+#ifdef CUCKOO
+    printf("    -k--lower set thershold for striped implementation[%d]\n",
+            ARGUMENT_DEFAULT_THRESHOLD);
+#endif
     
+
 }
 
 void clargs_init(int argc, char **argv)
@@ -117,6 +131,7 @@ void clargs_init(int argc, char **argv)
 			break;
 		case 'z':
 			clargs.init_insertions = atoi(optarg);
+            break;
 		case 'm':
 			clargs.max_key = atoi(optarg);
 			break;
@@ -143,6 +158,11 @@ void clargs_init(int argc, char **argv)
 #ifdef STRIPED
         case 'x':
             clargs.starting_locks = atoi(optarg);
+            break;
+#endif
+#ifdef CUCKOO
+        case 'k':
+            clargs.threshold = atoi(optarg);
             break;
 #endif
 		default:
@@ -177,5 +197,8 @@ void clargs_print()
 #endif
 #ifdef STRIPED
     printf("  starting locks: %d\n",clargs.starting_locks);
+#endif
+#ifdef CUCKOO
+    printf("  threshold : %d\n",clargs.threshold);
 #endif
 }

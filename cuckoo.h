@@ -23,7 +23,7 @@ struct CuckooSet{
     pthread_spinlock_t **locks;
 };
 
-int THRESHOLD=200;
+int THRESHOLD=300;
 int PROB_SIZE=4000;
 int LIMIT=160;
 
@@ -175,43 +175,59 @@ void list_add(struct array_list *A, int x){
 
 int remove_set(struct CuckooSet *C, int x,params_t * params){
 
+    tsc_start(&params->insert_lock_set_tsc);
     acquire(C,x);
+    tsc_pause(&params->insert_lock_set_tsc);
     struct array_list * set0 = &C->table[0][hash0(x)%C->capacity];
     if(list_search(set0,x)){ //if it is on set 1 we delete it
         list_remove(set0,x);
+        tsc_start(&params->insert_lock_set_tsc);
         release(C,x);
+        tsc_pause(&params->insert_lock_set_tsc);
         return 1;
     }
     else{
         struct array_list *set1 = &C->table[1][hash1(x)%C->capacity];
         if(list_search(set1,x)){ //if it is on set 2 we delete it 
             list_remove(set1,x);
+            tsc_start(&params->insert_lock_set_tsc);
             release(C,x);
+            tsc_pause(&params->insert_lock_set_tsc);
             return 1;
         }
     }
+    tsc_start(&params->insert_lock_set_tsc);
     release(C,x);
+    tsc_pause(&params->insert_lock_set_tsc);
     return 0;
 }
 
 
 int contains(struct CuckooSet  *C, int x,params_t *params){
     
+    tsc_start(&params->insert_lock_set_tsc);
     acquire(C,x);
+    tsc_pause(&params->insert_lock_set_tsc);
     int h0=hash0(x)%C->capacity;
     struct array_list set0 = C->table[0][h0];
     if (list_search(&set0,x)){
+        tsc_start(&params->insert_lock_set_tsc);
         release(C,x);
+        tsc_pause(&params->insert_lock_set_tsc);
         return 1;
     }
 
     int h1=hash1(x)%C->capacity;
     struct array_list set1 = C->table[1][h1];
     if (list_search(&set1,x)){
+        tsc_start(&params->insert_lock_set_tsc);
         release(C,x);
+        tsc_pause(&params->insert_lock_set_tsc);
         return 1;
     }
+    tsc_start(&params->insert_lock_set_tsc);
     release(C,x);
+    tsc_pause(&params->insert_lock_set_tsc);
     return 0;
 }
 
@@ -243,7 +259,7 @@ void resize(struct CuckooSet *C,params_t *params){
             curr = old_table[i][j].head;
             while (curr){
                 int val = curr->value;
-                add(C,val,1);
+                add(C,val,1,params);
                 curr = curr->next;
             }
          }
@@ -261,15 +277,31 @@ int realocate(struct CuckooSet *C,int i, int hi,int reentrant,params_t *params){
     int j=1-i;
     int round;
     for (round=0; round<LIMIT;round++){
-        if (!reentrant) acquire(C,hi);//edit
+        if (!reentrant) {
+            tsc_start(&params->insert_lock_set_tsc);
+            acquire(C,hi);//edit
+            tsc_pause(&params->insert_lock_set_tsc);
+        }
         struct array_list iset = C->table[i][hi];
         if (iset.size==0){
-            if (!reentrant) release(C,hi);
+            if (!reentrant) {
+                tsc_start(&params->insert_lock_set_tsc);
+                release(C,hi);
+                tsc_pause(&params->insert_lock_set_tsc);
+            }
             return 1;
         }
         int y = iset.head->value; //danger!!
-        if (!reentrant) release(C,hi);
-        if (!reentrant) acquire(C,y);
+        if (!reentrant) {
+            tsc_start(&params->insert_lock_set_tsc);
+            release(C,hi);
+            tsc_pause(&params->insert_lock_set_tsc);
+        }
+        if (!reentrant) {
+            tsc_start(&params->insert_lock_set_tsc);
+            acquire(C,y);
+            tsc_pause(&params->insert_lock_set_tsc);
+        }
         if (i==0) hj = hash1(y) % C->capacity;
         else hj = hash0(y) % C->capacity;
         struct array_list jset = C->table[j][hj];
@@ -310,7 +342,11 @@ int realocate(struct CuckooSet *C,int i, int hi,int reentrant,params_t *params){
 // if reentrant == 1 we must not lock( we are beeing called from resize so we have already locked)
 int add(struct CuckooSet *C,int x,int reentrant,params_t *params){
 
-    if (!reentrant) acquire(C,x);
+    if (!reentrant) {
+        tsc_start(&params->insert_lock_set_tsc);
+        acquire(C,x);
+        tsc_pause(&params->insert_lock_set_tsc);
+    }
     int h0 = hash0(x) % C->capacity;
     int h1 = hash1(x) % C->capacity;
     int i=-1;
@@ -322,18 +358,30 @@ int add(struct CuckooSet *C,int x,int reentrant,params_t *params){
 
     // if it already exists we dont need to add
     if(list_search(set0,x) || list_search(set1,x)){
-        if (!reentrant) release(C,x);
+        if (!reentrant) {
+            tsc_start(&params->insert_lock_set_tsc);
+            release(C,x);
+            tsc_pause(&params->insert_lock_set_tsc);
+        }
         return 0;
     }
     
     if(set0->size<THRESHOLD){
         list_add(set0,x);
-        if (!reentrant) release(C,x);
+        if (!reentrant) {
+            tsc_start(&params->insert_lock_set_tsc);
+            release(C,x);
+            tsc_pause(&params->insert_lock_set_tsc);
+        }
         return 1;
     }
     else if(set1->size<THRESHOLD){
         list_add(set1,x);
-        if (!reentrant) release(C,x);
+        if (!reentrant) {
+            tsc_start(&params->insert_lock_set_tsc);
+            release(C,x);
+            tsc_pause(&params->insert_lock_set_tsc);
+        }
         return 1;
     }
     else if(set0->size<PROB_SIZE){
@@ -349,7 +397,11 @@ int add(struct CuckooSet *C,int x,int reentrant,params_t *params){
     else{
         must_resize =1;
     }
-    if (!reentrant) release(C,x);
+    if (!reentrant) {
+        tsc_start(&params->insert_lock_set_tsc);
+        release(C,x);
+        tsc_pause(&params->insert_lock_set_tsc);
+    }
     if (must_resize){
         if (reentrant) {
             printf("HEY!!~\n");
@@ -414,8 +466,9 @@ struct HashSet {
 
 struct CuckooSet C;
 
-void initialize(struct HashSet *H, int size){
+void initialize(struct HashSet *H, int size,int threshold){
     
+    THRESHOLD=threshold;
     _initialize(&C,size);
 }
 
