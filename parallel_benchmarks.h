@@ -4,6 +4,9 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include "tsc.h"
+#ifdef TSX
+#	include "rtm-le.h"
+#endif
 
 typedef struct {
 	unsigned tid;
@@ -26,6 +29,11 @@ typedef struct {
     unsigned long long curr;
     unsigned long long next;
 #endif
+
+#ifdef TSX
+	txstats_t txstats;
+#endif
+
 	tsc_t insert_lock_set_tsc;
 
 //	tsc_t operations_tsc;

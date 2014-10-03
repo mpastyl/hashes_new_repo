@@ -23,6 +23,9 @@
 #   include "cuckoo.h"
 #elif defined(NON_BLOCKING)
 #   include "non_blocking.h"
+#elif defined(TSX)
+#	include "tsx.h"
+	int rtm_elide_max_retries = 4;
 #else
 #	error "Please define a queue type\n"
 #endif
@@ -41,22 +44,31 @@ static void params_print()
 	int i;
 
 	int total_operations = 0, total_lookups = 0, 
-	    total_insertions = 0, total_deletions = 0;
+	    total_insertions = 0, total_deletions = 0,
+		total_real_insertions = 0, total_real_deletions = 0;
 	for (i=0; i < clargs.num_threads; i++) {
-		printf("Thread %2d: %8d ( %8d %8d %8d )\n", 
+		printf("Thread %2d: %8d ( %8d %8d %8d %8d %8d )\n", 
 		       params[i].tid, params[i].operations,
-		       params[i].lookups, params[i].insertions,
-		       params[i].deletions);
+		       params[i].lookups, 
+		       params[i].insertions, params[i].real_insertions,
+		       params[i].deletions, params[i].real_deletions);
 		total_operations += params[i].operations;
 		total_lookups += params[i].lookups;
 		total_insertions += params[i].insertions;
 		total_deletions += params[i].deletions;
+		total_real_insertions += params[i].real_insertions;
+		total_real_deletions += params[i].real_deletions;
         if (clargs.verify == 1){
             elements_count += params[i].real_insertions;
             elements_count -= params[i].real_deletions;
             total_value_sum += params[i].value_sum;
         }
 	}
+	printf("%10s %8d ( %8d %8d %8d %8d %8d )\n", "TotalStat",
+	       total_operations, total_lookups, 
+	       total_insertions, total_real_insertions, 
+	       total_deletions, total_real_deletions);
+	printf("\n");
 
         
     if (clargs.verify==1){
@@ -75,10 +87,6 @@ static void params_print()
             printf(" expected sum == %lld , sum found== %lld\n\n",expected_sum,total_value_sum);
         }
     }
-	printf("%10s %8d ( %8d %8d %8d )\n", "TotalStat",
-	       total_operations, total_lookups, 
-	       total_insertions, total_deletions);
-	printf("\n");
 
 	printf("Verbose timers: insert_lock_set_tsc\n");
 	for (i=0; i < clargs.num_threads; i++) {
@@ -86,6 +94,21 @@ static void params_print()
 		       tsc_getsecs(&params[i].insert_lock_set_tsc));
 	}
 	printf("\n");
+
+#ifdef TSX
+	printf("%11s %8s %8s %8s %8s %8s %8s %8s %8s\n", "Tid   ", "starts  ",
+	       "commits  ", "aborts  ", "cap    ", "con    ", "exp   ", "unk   ",
+	       "lacqs    ");
+	for (i=0; i < clargs.num_threads; i++) {
+		printf("TXSTATS %d: %8d %8d %8d %8d %8d %8d %8d %8d\n", params[i].tid,
+		       params[i].txstats.txstarts, params[i].txstats.txcommits,
+		       params[i].txstats.txaborts, 
+		       params[i].txstats.txaborts_cap, params[i].txstats.txaborts_con, 
+		       params[i].txstats.txaborts_exp, params[i].txstats.txaborts_unk,
+		       params[i].txstats.lock_acqs);
+	}
+	printf("\n");
+#endif
 
 #ifdef WORKLOAD_TIME
 	printf("\033[31mOps/usec:\033[0m %2.4lf\n",
@@ -229,7 +252,7 @@ double pthreads_benchmark()
 		exit(1);
 	}
 
-	print_set_length(&ht);
+//	print_set_length(&ht);
 
 	return timer_report_sec(wall_timer);
 }
