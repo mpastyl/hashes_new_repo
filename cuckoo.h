@@ -126,6 +126,7 @@ int list_search(struct array_list * A, int x){
     int i;
     struct node * curr=A->head;
     while(curr!=NULL){
+        if(curr->value> x) return 0;
         if(curr->value ==  x) return 1;
         curr = curr->next;
     }
@@ -149,19 +150,23 @@ int list_remove(struct array_list * A, int x){
             A->size--;
             return 1;
         }
+        if (curr->value >x) {
+            A->size++;
+            return 0;
+        }
         prev=curr;
         curr=curr->next;
    }
    return 0;
 }
 
-void list_add(struct array_list *A, int x){
+int  list_add(struct array_list *A, int x){
     
     struct node * new = (struct node * )malloc(sizeof(struct node));
     new->value = x;
     new->next = NULL;
     A->size++;
-    struct node * curr = A->head;
+    /*struct node * curr = A->head;
     if (curr==NULL) {
         A->head = new;
         return;
@@ -170,7 +175,24 @@ void list_add(struct array_list *A, int x){
         curr = curr->next;
 
     curr->next = new;
-}
+    */
+    struct node * curr=A->head;
+    struct node * prev=NULL; 
+
+    while(curr){
+        if (curr->value== x) {
+            A->size--;
+            return 0;
+        }
+        if (curr->value>x) break;
+        prev=curr;
+        curr=curr->next;
+    }
+    new->next=curr;
+    if (prev) prev->next=new;
+    else A->head=new;
+    return 1;
+}   
 
 
 int remove_set(struct CuckooSet *C, int x,params_t * params){
@@ -233,7 +255,7 @@ int contains(struct CuckooSet  *C, int x,params_t *params){
 
 void resize(struct CuckooSet *C,params_t *params){
     printf("@resize\n");
-    int i,j;
+    int i,j,res;
     struct node * curr;
     int old_capacity = C->capacity;
     take_all_locks(C);
@@ -259,7 +281,7 @@ void resize(struct CuckooSet *C,params_t *params){
             curr = old_table[i][j].head;
             while (curr){
                 int val = curr->value;
-                add(C,val,1,params);
+                res=add(C,val,1,params);
                 curr = curr->next;
             }
          }
@@ -276,6 +298,7 @@ int realocate(struct CuckooSet *C,int i, int hi,int reentrant,params_t *params){
     int hj = 0;
     int j=1-i;
     int round;
+    int res;
     for (round=0; round<LIMIT;round++){
         if (!reentrant) {
             tsc_start(&params->insert_lock_set_tsc);
@@ -307,19 +330,19 @@ int realocate(struct CuckooSet *C,int i, int hi,int reentrant,params_t *params){
         struct array_list jset = C->table[j][hj];
         if(list_remove(&iset,y)){
             if(jset.size<THRESHOLD){
-                list_add(&jset,y);
+                res=list_add(&jset,y);
                 if (!reentrant) release(C,y);
                 return 1;
             }
             else if(jset.size<PROB_SIZE){
-                list_add(&jset,y);
+                res=list_add(&jset,y);
                 i=1-i;
                 hi=hj;
                 j=1-j;
                 if (!reentrant) release(C,y);
             }
             else{
-                list_add(&iset,y);
+                res=list_add(&iset,y);
                 if (!reentrant) release(C,y);
                 return 0;
             }
@@ -342,6 +365,7 @@ int realocate(struct CuckooSet *C,int i, int hi,int reentrant,params_t *params){
 // if reentrant == 1 we must not lock( we are beeing called from resize so we have already locked)
 int add(struct CuckooSet *C,int x,int reentrant,params_t *params){
 
+    int res;
     if (!reentrant) {
         tsc_start(&params->insert_lock_set_tsc);
         acquire(C,x);
@@ -367,7 +391,7 @@ int add(struct CuckooSet *C,int x,int reentrant,params_t *params){
     }
     
     if(set0->size<THRESHOLD){
-        list_add(set0,x);
+        res=list_add(set0,x);
         if (!reentrant) {
             tsc_start(&params->insert_lock_set_tsc);
             release(C,x);
@@ -376,7 +400,7 @@ int add(struct CuckooSet *C,int x,int reentrant,params_t *params){
         return 1;
     }
     else if(set1->size<THRESHOLD){
-        list_add(set1,x);
+        res=list_add(set1,x);
         if (!reentrant) {
             tsc_start(&params->insert_lock_set_tsc);
             release(C,x);
@@ -385,12 +409,12 @@ int add(struct CuckooSet *C,int x,int reentrant,params_t *params){
         return 1;
     }
     else if(set0->size<PROB_SIZE){
-        list_add(set0,x);
+        res=list_add(set0,x);
         i=0;
         h=h0;
     }
     else if(set1->size<PROB_SIZE){
-        list_add(set1,x);
+        res=list_add(set1,x);
         i=1;
         h=h1;
     }
