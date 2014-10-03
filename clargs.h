@@ -20,6 +20,9 @@ typedef struct {
 #ifdef STRIPED
     int starting_locks;
 #endif
+#ifdef CUCKOO
+    int threshold
+#endif
 } clargs_t;
 extern clargs_t clargs;
 

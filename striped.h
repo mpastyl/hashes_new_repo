@@ -81,6 +81,7 @@ int list_search(struct node_t * Head,int val){
     
     curr=Head;
     while(curr){
+        if(curr->value>val) return 0;
         if(curr->value==val) return 1;
         curr=curr->next;
     }
@@ -89,11 +90,10 @@ int list_search(struct node_t * Head,int val){
 
 
 //add value in bucket;
-//NOTE: duplicate values are allowed...
-void list_add(struct HashSet * H, int key,int val,int hash_code){
+int list_add(struct HashSet * H, int key,int val,int hash_code){
     
-    //struct node_t * curr;
-    //struct node_t * next;
+    struct node_t * curr;
+    struct node_t * prev;
     struct node_t * node=(struct node_t *)malloc(sizeof(struct node_t));
     /*node->value=val;
     node->next=NULL;
@@ -108,11 +108,26 @@ void list_add(struct HashSet * H, int key,int val,int hash_code){
     }
     curr->next=node;
     */
+    //node->value=val;
+    //node->hash_code=hash_code;
+    //if(H->table[key]==NULL) node->next=NULL;
+   //else node->next=H->table[key];
+    //H->table[key]=node;
     node->value=val;
     node->hash_code=hash_code;
-    if(H->table[key]==NULL) node->next=NULL;
-    else node->next=H->table[key];
-    H->table[key]=node;
+
+    curr=H->table[key];
+    prev=NULL;
+    while(curr){
+        if (curr->value==val) return 0;
+        if (curr->value>val) break;
+        prev=curr;
+        curr=curr->next;
+    }
+    node->next=curr;
+    if (prev) prev->next=node;
+    else H->table[key]=node;
+    return 1;
 }
 
 
@@ -136,6 +151,7 @@ int list_delete(struct HashSet *H,int key,int val){
             free(curr);
             return 1;
         }
+        else if (curr->value >val) return 0;
         prev=curr;
         curr=curr->next;
     }
@@ -184,7 +200,7 @@ int contains(struct HashSet *H,int hash_code, int val,params_t *params){
 }
 
 //reentrant ==1 means we must not lock( we are calling from resize so we have already locked the data structure)
-void add(struct HashSet *H,int hash_code, int val, int reentrant,params_t *params){
+int add(struct HashSet *H,int hash_code, int val, int reentrant,params_t *params){
     
     if(!reentrant){
 		tsc_start(&params->insert_lock_set_tsc);
@@ -192,15 +208,17 @@ void add(struct HashSet *H,int hash_code, int val, int reentrant,params_t *param
 		tsc_pause(&params->insert_lock_set_tsc);
     }
     int bucket_index = hash_code % H->capacity;
-    list_add(H,bucket_index,val,hash_code);
+    int res =list_add(H,bucket_index,val,hash_code);
     //H->setSize++;
-    __sync_fetch_and_add(&(H->setSize),1);
     if(!reentrant) {
 		tsc_start(&params->insert_lock_set_tsc);
         unlock_set(H,hash_code);
 		tsc_pause(&params->insert_lock_set_tsc);
     }
+    if (!res) return 0;
+    __sync_fetch_and_add(&(H->setSize),1);
     if (policy(H)) resize(H,params);
+    return 1;
 }
 
 int _delete(struct HashSet *H,int hash_code, int val,params_t *params){
@@ -222,7 +240,7 @@ int _delete(struct HashSet *H,int hash_code, int val,params_t *params){
 void resize(struct HashSet *H,params_t *params){
     
     printf("@resize!\n");
-    int i;
+    int i,res;
     struct node_t * curr;
     int old_capacity = H->capacity;
     for(i=0;i<H->locks_length;i++) {
@@ -254,7 +272,7 @@ void resize(struct HashSet *H,params_t *params){
                 int val = curr->value;
                 int hash_code = curr->hash_code;
                 //int bucket_index= hash_code % new_capacity;
-                add(H,hash_code,val,1,params);
+                res=add(H,hash_code,val,1,params);
                 curr=curr->next;
         }
     }
@@ -341,8 +359,7 @@ void initialize(struct HashSet *H,int size,int starting_locks){
 
 
 int Insert(struct HashSet *H,int key,params_t *params){
-    add(H,key,key,0,params);
-    return 1;
+    return add(H,key,key,0,params);
 }
 
 int Lookup(struct HashSet *H,int key,params_t *params){
