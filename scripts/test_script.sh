@@ -21,7 +21,7 @@ do
     for i in 1 2 3 6 12 24; 
     do
         for name in "global_lock" "striped" "refinable" "split_ordered"; 
-            do ./main.$name -t$i -s 4096 -z $z -l80 -i10 >> out_${name}_init_size1024_preinsertion_$z.out;
+            do ./main.$name -t$i -s 4096 -z $z -l80 -i10 >> out_${name}_init_size4096_preinsertion_$z.out;
         done;
     done;
 done;
