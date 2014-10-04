@@ -10,26 +10,29 @@ struct NodeType{
 };
 
 
-unsigned long long get_count(unsigned long long a){
+inline unsigned long long get_count(unsigned long long a){
 
     unsigned long long b = a >>63;
     return b;
 }
 
-unsigned long long get_pointer(unsigned long long a){
+#define get_pointer(a ) (a&0x7fffffffffffffff)
+
+/*inline unsigned long long get_pointer(unsigned long long a){
     unsigned long long b = a << 1;
     b= b >>1;
     return b;
 }
-
-unsigned long long set_count(unsigned long long  a, unsigned long long count){
+*/
+inline unsigned long long set_count(unsigned long long  a, unsigned long long count){
     unsigned long long count_temp =  count << 63;
     unsigned long long b = get_pointer(a);
     b = b | count_temp;
     return b;
 }
 
-unsigned long long set_pointer(unsigned long long a, unsigned long long ptr){
+#define set_pointer(a, ptr) ( (a & 0x8000000000000000) | (ptr & 0x7fffffffffffffff) )
+/*unsigned long long set_pointer(unsigned long long a, unsigned long long ptr){
     unsigned long long b = 0;
     unsigned long long c = get_count(a);
     b = set_count(b,c);
@@ -37,11 +40,15 @@ unsigned long long set_pointer(unsigned long long a, unsigned long long ptr){
     b= b | ptr;
     return b;
 }
+*/
 
-unsigned long long set_both(unsigned long long a,unsigned long long ptr, unsigned long long count){
-    a=set_pointer(a,ptr);
-    a=set_count(a,count);
-    return a;
+inline unsigned long long set_both(unsigned long long a,unsigned long long ptr, unsigned long long count){
+    if (count) return (ptr|0x8000000000000000);
+    else return(ptr&0x7fffffffffffffff);
+    
+    //a=set_pointer(a,ptr);
+    //a=set_count(a,count);
+    //return a;
 }
 
 
@@ -58,9 +65,11 @@ int list_insert(unsigned long long * head, struct NodeType * node,params_t *para
     int res;
     int temp=0;
     unsigned int key=node->key;
-    
     while (1){
-        if (list_find(&head,key,params)) return 0;
+        if (list_find(&head,key,params)) {
+            return 0;
+        }
+        //printf("find unsuccessfull steps %d\n",params->find_steps);
         node->marked_next = set_both(node->marked_next,get_pointer(params->curr),0);
         
         unsigned long long compare_value = set_both(compare_value,get_pointer(params->curr),0);
@@ -71,8 +80,11 @@ int list_insert(unsigned long long * head, struct NodeType * node,params_t *para
         res =__sync_bool_compare_and_swap(params->prev,compare_value,new_value);
         if (res){
             //Head=head;
+            //printf("%d\n",count);
             return 1;
         }
+        //else printf("CAS failed\n");
+        //count++;
      }
 }
 
@@ -110,8 +122,8 @@ int list_find(unsigned long long ** head,unsigned int key,params_t *params){
         //printf("#t %d &curr= %p\n",omp_get_thread_num(),&curr);
         while (1){
 
-            if(get_pointer(params->curr)==0) return 0;
             
+            if(get_pointer(params->curr)==0) return 0;
             unsigned long long pointer=get_pointer(((struct NodeType * )get_pointer(params->curr))->marked_next);
             unsigned long long mark_bit = get_count(((struct NodeType * )get_pointer(params->curr))->marked_next);
             
@@ -128,6 +140,7 @@ int list_find(unsigned long long ** head,unsigned int key,params_t *params){
 
             else{
                 
+                printf("Hey!\n");
                 unsigned long long compare_value = set_both(compare_value,params->curr,0);
                 unsigned long long new_value = set_both(new_value,params->next,0);
 
