@@ -28,9 +28,20 @@ cd ../
 
 
 #corss init_size
-for s in 2048 4096 8192 16384 32768 ;
-do 
-        for name in "global_lock" "striped" "refinable" "split_ordered"; 
-            do ./main.$name -t64 -s $s -l80 -i10 >> out_sandman_${name}_cross_init_size.out;
+#for s in 2048 4096 8192 16384 32768 ;
+#do 
+#        for name in "global_lock" "striped" "refinable" "split_ordered"; 
+#            do ./main.$name -t64 -s $s -l80 -i10 >> out_sandman_${name}_cross_init_size.out;
+#        done;
+#done;
+
+#big table
+for i in 1 2 3 6 12 24;
+do
+        ##for name in "global_lock" "striped" "refinable" "split_ordered" "non_blocking"; 
+        ##    do ./main.$name -t$i -s 16777216 -z 1048576 -l80 -i10 >> out_bit_table_${name}.out;
+        ##done;
+        for name in "cuckoo"; 
+            do ./main.$name -t$i -s 16777216 -z 1048576 -l80 -i10 -k 2 >> out_bit_table_${name}_h.out;
         done;
 done;
