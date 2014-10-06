@@ -31,6 +31,6 @@ cd ../
 for s in 2048 4096 8192 16384 32768 ;
 do 
         for name in "global_lock" "striped" "refinable" "split_ordered"; 
-            do ./main.$name -t24 -s $s -l80 -i10 >> out_${name}_cross_init_size.out;
+            do ./main.$name -t64 -s $s -l80 -i10 >> out_sandman_${name}_cross_init_size.out;
         done;
 done;

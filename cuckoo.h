@@ -137,8 +137,9 @@ int list_remove(struct array_list * A, int x){
    
     struct node * curr=A->head;
     struct node * prev=NULL;
+    if (!curr) return 0;
     if(curr->value == x){
-       A->head=NULL;
+       A->head=curr->next;
        //free(curr);
        A->size--;
        return 1;
@@ -151,7 +152,7 @@ int list_remove(struct array_list * A, int x){
             return 1;
         }
         if (curr->value >x) {
-            A->size++;
+            //A->size++;
             return 0;
         }
         prev=curr;
