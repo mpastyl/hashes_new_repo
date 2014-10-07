@@ -88,6 +88,20 @@ static void params_print()
         }
     }
 
+    printf("Insert timers\n");
+    for (i=0; i < clargs.num_threads;i++){
+        printf("Thread %2d: average time to insert %4.8lf\n",
+           params[i].tid,tsc_getsecs(&params[i].insert_timer)/(double)params[i].insertions);
+            //params[i].tid,tsc_getsecs(&params[i].insert_timer));
+    }
+    
+    printf("Lookup timers\n");
+    for (i=0; i < clargs.num_threads;i++){
+        printf("Thread %2d: average time to lookup %4.8lf\n",
+            params[i].tid,tsc_getsecs(&params[i].lookup_timer)/(double)params[i].lookups);
+            //params[i].tid,tsc_getsecs(&params[i].lookup_timer));
+    }
+
 	printf("Verbose timers: insert_lock_set_tsc\n");
 	for (i=0; i < clargs.num_threads; i++) {
 		printf("  Thread %2d: %4.2lf\n", params[i].tid,
@@ -131,6 +145,8 @@ void *thread_fn(void *args)
 
 	srand48_r(params->tid * clargs.thread_seed, &drand_buffer);
 	tsc_init(&params->insert_lock_set_tsc);
+	tsc_init(&params->insert_timer);
+	tsc_init(&params->lookup_timer);
 
 	pthread_barrier_wait(&barrier);
 	if (params->tid == 0)
@@ -246,6 +262,13 @@ double pthreads_benchmark()
 		pthread_join(threads[i], NULL);
 
 	params_print();
+
+#ifdef WORKLOAD_FIXED
+	printf("\033[31mOps/usec:\033[0m %2.4lf\n",
+	       (double) nr_operations / (timer_report_sec(wall_timer) * 1000000));
+	printf("\n");
+#endif
+    
 
 	if (pthread_barrier_destroy(&barrier)) {
 		perror("pthread_barrier_destroy");

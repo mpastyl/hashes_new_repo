@@ -158,24 +158,33 @@ long long  int list_sum(struct node_t * Head){
 }
 
 //search value in bucket;
-int list_search(struct node_t * Head,int val){
+int list_search(struct node_t * Head,int val,params_t *params){
     
     struct node_t * curr;
     
+    tsc_start(&params->lookup_timer);
     curr=Head;
     while(curr){
-        if(curr->value>val) return 0;
-        if(curr->value==val) return 1;
+        if(curr->value>val) {
+            tsc_pause(&params->lookup_timer);
+            return 0;
+        }
+        if(curr->value==val) {
+            tsc_pause(&params->lookup_timer);
+            return 1;
+        }
         curr=curr->next;
     }
+    tsc_pause(&params->lookup_timer);
     return 0;
 }
 
 
 //add value in bucket;
 //NOTE: duplicate values are allowed...
-int list_add(struct HashSet * H, int key,int val,int hash_code){
-    
+int list_add(struct HashSet * H, int key,int val,int hash_code,params_t *params){
+   
+    tsc_start(&params->insert_timer);
     struct node_t * curr;
     struct node_t * prev;
     struct node_t * node=(struct node_t *)malloc(sizeof(struct node_t));
@@ -198,7 +207,10 @@ int list_add(struct HashSet * H, int key,int val,int hash_code){
     curr=H->table[key];
     prev=NULL;
     while(curr){
-        if (curr->value==val) return 0;
+        if (curr->value==val){
+            tsc_pause(&params->insert_timer);
+            return 0;
+        }
         if (curr->value>val) break;
         prev=curr;
         curr=curr->next;
@@ -206,6 +218,7 @@ int list_add(struct HashSet * H, int key,int val,int hash_code){
     node->next=curr;
     if (prev) prev->next=node;
     else H->table[key]=node;
+    tsc_pause(&params->insert_timer);
     return 1;
 }
 
@@ -272,7 +285,7 @@ int contains(struct HashSet *H,int hash_code, int val,params_t *params){
     acquire(H,hash_code,params);
 	tsc_pause(&params->insert_lock_set_tsc);
     int bucket_index = hash_code % H->capacity;
-    int res=list_search(H->table[bucket_index],val);
+    int res=list_search(H->table[bucket_index],val,params);
 	tsc_start(&params->insert_lock_set_tsc);
     release(H,hash_code);
 	tsc_pause(&params->insert_lock_set_tsc);
@@ -288,7 +301,7 @@ int  add(struct HashSet *H,int hash_code, int val, int reentrant,params_t *param
 	    tsc_pause(&params->insert_lock_set_tsc);
     }
     int bucket_index = hash_code % H->capacity;
-    int res=list_add(H,bucket_index,val,hash_code);
+    int res=list_add(H,bucket_index,val,hash_code,params);
     //H->setSize++;
     if(!reentrant) {
 	    tsc_start(&params->insert_lock_set_tsc);

@@ -45,6 +45,10 @@ typedef struct {
 
 	tsc_t insert_lock_set_tsc;
     char pad9[(64-sizeof(tsc_t))/sizeof(char)];
+	tsc_t insert_timer;
+    char pad10[(64-sizeof(tsc_t))/sizeof(char)];
+	tsc_t lookup_timer;
+    char pad11[(64-sizeof(tsc_t))/sizeof(char)];
 
 //	tsc_t operations_tsc;
 } params_t;
