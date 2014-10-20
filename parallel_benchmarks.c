@@ -197,6 +197,7 @@ double pthreads_benchmark()
 	int nthreads = clargs.num_threads;
 	unsigned nr_operations = 1000000; /* FIXME */
 	int i;
+    unsigned int nr_cpus, *cpus;
 
 	printf("Pthreads Benchmark...\n");
 	printf("nthreads: %d nr_operations: %d ( %d %d %d )\n", clargs.num_threads, 
@@ -206,7 +207,13 @@ double pthreads_benchmark()
 	printf("run_time_sec: %d\n", clargs.run_time_sec);
 #endif
 
-	XMALLOC(threads, clargs.num_threads);
+	/* Get the affinity option from MT_CONF environment variable. */
+	get_mtconf_options(&nr_cpus, &cpus);
+	mt_conf_print(nr_cpus, cpus);
+	nthreads = nr_cpus;
+	clargs.num_threads = nr_cpus;
+	
+    XMALLOC(threads, clargs.num_threads);
 	XMALLOC(params, clargs.num_threads);
 
 	/* Initialize the Hash Table */
