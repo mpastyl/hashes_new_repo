@@ -18,9 +18,11 @@ struct HashSet{
     struct node_t ** table;
     int capacity;
     int setSize;
+    char pad_gl_0[(64-sizeof(struct node_t **) - 2*sizeof(int))/sizeof(char)];
 //    int lock;
 	pthread_spinlock_t lock;
-};
+    char pad_gl_1[(64-sizeof(pthread_spinlock_t ))/sizeof(char)];
+} __attribute__ ((packed));
 
 #define lock_init(H)  pthread_spin_init(&H->lock, PTHREAD_PROCESS_SHARED)
 #define lock_set(H)   pthread_spin_lock(&H->lock)

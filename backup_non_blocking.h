@@ -7,18 +7,18 @@
 
 unsigned long long get_count(unsigned long long a){
 
-    unsigned long long b = a >>61;
+    unsigned long long b = a >>60;
     return b;
 }
 
 unsigned long long get_pointer(unsigned long long a){
-    unsigned long long b = a << 3;
-    b= b >>3;
+    unsigned long long b = a << 4;
+    b= b >>4;
     return b;
 }
 
 unsigned long long set_count(unsigned long long  a, unsigned long long count){
-    unsigned long long count_temp =  count << 61;
+    unsigned long long count_temp =  count << 60;
     unsigned long long b = get_pointer(a);
     b = b | count_temp;
     return b;
@@ -67,7 +67,7 @@ int Hash(struct HashSet *H,int key){
 }
 struct BucketT *Bucket(struct HashSet *H,int h,int index){
     //if ((h+index*(index+1)/2) > H->size) printf("size exceeded %d\n", h+index*(index+1)/2);
-    unsigned long long temp_res = (2*h+(index*index+index))/2;
+    unsigned long long temp_res = h+(index*index+index)/2;
     return (&(H->buckets[temp_res %(unsigned long long) H->size]));
 }
 
@@ -250,7 +250,7 @@ int Insert(struct HashSet *H,int k,params_t *params){
     unsigned long long expected;
     unsigned long long new_to_set;
     do{
-        if (++i>=(H->size))
+        if (++i>=(H->size/300))
             
             printf("Table full!\n");//TODO: i may be <H->size but Bucket(H,h,i) goes beyond H->size
         old_state = Bucket(H,h,i)->vs;
@@ -294,7 +294,7 @@ int Erase(struct HashSet *H, int k,params_t * params){
         old_state = Bucket(H,h,i)->vs;
         version = get_pointer(old_state);
         state = get_count(old_state);
-        if ((state==MEMBER)&&(Bucket(H,h,i)->key==k)){
+        if ((state==MEMBER)&&(Bucket(H,h,i)->key=k)){
             
             expected  = set_both(expected,version,MEMBER);
             new_value = set_both(new_value,version,BUSY);

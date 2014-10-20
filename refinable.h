@@ -21,9 +21,10 @@ struct HashSet{
     struct node_t ** table;
     int capacity;
     int setSize;
-    struct locks * locks_struct;
     int owner;
-};
+    struct locks * locks_struct;
+    char pad_str_0[(64-sizeof(struct locks *) - sizeof(struct node_t **) -3*sizeof(int))/sizeof(char)];
+} __attribute__ ((packed));
 
 int NULL_VALUE = 5139239;
 
@@ -63,7 +64,7 @@ unsigned long long set_both(unsigned long long a, unsigned long long ptr, unsign
 }
 void lock_set (pthread_spinlock_t * locks, int hash_code){
 
-    int indx=hash_code;
+    int indx=64*hash_code;
     pthread_spin_lock(&locks[indx]);
     //int indx=hash_code % H->locks_length;
     /*while (1){
@@ -117,7 +118,7 @@ void acquire(struct HashSet *H,int hash_code,params_t *params){
 }
 void unlock_set(pthread_spinlock_t * locks, int hash_code){
 
-    int indx=hash_code;
+    int indx=64*hash_code;
     pthread_spin_unlock(&locks[indx]);
     //locks[indx] = 0;
 }
@@ -265,8 +266,8 @@ void initialize(struct HashSet * H, int capacity){
     }
     H->locks_struct = (struct locks *) malloc(sizeof(struct locks ));
     H->locks_struct->locks_length = capacity;
-    H->locks_struct->locks_array = (pthread_spinlock_t *) malloc(sizeof(pthread_spinlock_t)* capacity);
-    for(i=0;i<capacity;i++) pthread_spin_init(&H->locks_struct->locks_array[i],PTHREAD_PROCESS_SHARED);//H->locks_struct->locks_array[i*]=0;
+    H->locks_struct->locks_array = (pthread_spinlock_t *) malloc(sizeof(pthread_spinlock_t)* capacity*64);
+    for(i=0;i<capacity;i++) pthread_spin_init(&H->locks_struct->locks_array[i*64],PTHREAD_PROCESS_SHARED);//H->locks_struct->locks_array[i*]=0;
     H->owner = set_both(H->owner,NULL_VALUE,0);
 
 }
@@ -335,7 +336,7 @@ void quiesce(struct HashSet *H,params_t *params){
     for(i=0;i<H->locks_struct->locks_length;i++){
         //while(locks[i]==1); //TODO: is it a race?
 	    tsc_start(&params->insert_lock_set_tsc);
-        pthread_spin_lock(&locks[i]);
+        pthread_spin_lock(&locks[i*64]);
 	    tsc_pause(&params->insert_lock_set_tsc);
     }
 }
@@ -387,8 +388,8 @@ void resize(struct HashSet *H,params_t *params){
         //so we might as well delete the old ones and make new ones
         pthread_spinlock_t * old_locks = H->locks_struct->locks_array;
         //for(i=0;i<old_capacity;i++) if( H->locks_struct->locks_array[i]!=0) printf("thread %d capacity %d HEY!\n",omp_get_thread_num(),H->capacity);
-        pthread_spinlock_t * new_locks = (pthread_spinlock_t *)malloc(sizeof(pthread_spinlock_t) * new_capacity);//edit!
-        for(i=0;i<new_locks_length;i++) pthread_spin_init(&new_locks[i],PTHREAD_PROCESS_SHARED);
+        pthread_spinlock_t * new_locks = (pthread_spinlock_t *)malloc(sizeof(pthread_spinlock_t) * new_capacity*64);//edit!
+        for(i=0;i<new_locks_length;i++) pthread_spin_init(&new_locks[i*64],PTHREAD_PROCESS_SHARED);
         struct locks * new_locks_struct = (struct locks *) malloc(sizeof(struct locks));
         new_locks_struct->locks_array=new_locks;
         new_locks_struct->locks_length = new_locks_length;

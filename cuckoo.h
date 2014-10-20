@@ -20,8 +20,10 @@ struct CuckooSet{
     int capacity;
     int locks_length;
     struct array_list ** table; // need double arrray 
+    char pad_cuck_0[(64- sizeof(struct array_list **) -2*sizeof(int))/sizeof(char)];
     pthread_spinlock_t **locks;
-};
+    char pad_cuck_1[(64- sizeof(pthread_spinlock_t ** ))/sizeof(char)];
+} __attribute__ ((packed));
 
 int THRESHOLD=300;
 int PROB_SIZE=4000;
@@ -38,8 +40,8 @@ int hash1( int x){
 
 void acquire(struct CuckooSet * C ,int x){
     
-    int x0=hash0(x)%C->locks_length;        
-    int x1=hash1(x)%C->locks_length;        
+    int x0=64*(hash0(x)%C->locks_length);        
+    int x1=64*(hash1(x)%C->locks_length);        
 
     pthread_spin_lock(&(C->locks[0][x0]));
     pthread_spin_lock(&(C->locks[1][x1]));
@@ -64,7 +66,7 @@ void take_all_locks(struct CuckooSet *C){
     int i;
     for(i=0;i<C->locks_length;i++){
 
-        pthread_spin_lock(&(C->locks[0][i]));
+        pthread_spin_lock(&(C->locks[0][i*64]));
         /*while(1){
             if( !C->locks[0][i]){
                 if(!__sync_lock_test_and_set(&(C->locks[0][i]),1)) break;
@@ -77,7 +79,7 @@ void take_all_locks(struct CuckooSet *C){
 void leave_all_locks(struct CuckooSet *C){
     int i;
     for(i=0;i<C->locks_length;i++){
-        pthread_spin_unlock(&(C->locks[0][i]));
+        pthread_spin_unlock(&(C->locks[0][i*64]));
         //C->locks[0][i] = 0;
     }
 }
@@ -85,8 +87,8 @@ void leave_all_locks(struct CuckooSet *C){
 void release(struct CuckooSet *C, int x){
 
     
-    int x0=hash0(x)%C->locks_length;        
-    int x1=hash1(x)%C->locks_length;      
+    int x0=64*(hash0(x)%C->locks_length);        
+    int x1=64*(hash1(x)%C->locks_length);      
 
     
     pthread_spin_unlock(&(C->locks[0][x0]));
@@ -111,13 +113,13 @@ void _initialize(struct CuckooSet *C, int capacity){
             C->table[i][j].size=0;
             C->table[i][j].head=NULL;
         }
-    pthread_spinlock_t  * inner_locks = (pthread_spinlock_t *)malloc(sizeof(pthread_spinlock_t) *capacity *2);
+    pthread_spinlock_t  * inner_locks = (pthread_spinlock_t *)malloc(sizeof(pthread_spinlock_t) *capacity *2*64);
     C->locks = (pthread_spinlock_t **)malloc(sizeof(pthread_spinlock_t *) *2);
     C->locks[0]=&inner_locks[0];
-    C->locks[1]=&inner_locks[capacity];
+    C->locks[1]=&inner_locks[capacity*64];
     for(i=0;i<2;i++)
         for(j=0;j<capacity;j++) 
-            pthread_spin_init(&(C->locks[i][j]),PTHREAD_PROCESS_SHARED);
+            pthread_spin_init(&(C->locks[i][j*64]),PTHREAD_PROCESS_SHARED);
             //C->locks[i][j]=0;
 }
 

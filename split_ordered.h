@@ -140,7 +140,7 @@ int list_find(unsigned long long ** head,unsigned int key,params_t *params){
 
             else{
                 
-                printf("Hey!\n");
+                //printf("Hey!\n");
                 unsigned long long compare_value = set_both(compare_value,params->curr,0);
                 unsigned long long new_value = set_both(new_value,params->next,0);
 

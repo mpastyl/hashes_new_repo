@@ -17,14 +17,16 @@ struct HashSet{
     struct node_t ** table;
     int capacity;
     int setSize;
-    pthread_spinlock_t * locks;
     int locks_length;
-};
+    char pad_str_0[(64- sizeof(struct node_t **) -3*sizeof(int))/sizeof(char)];
+    pthread_spinlock_t * locks;
+    char pad_str_1[(64- sizeof(pthread_spinlock_t *))/sizeof(char)];
+} __attribute__ ((packed));
 
 void lock_set (struct HashSet * H, int hash_code){
 
     
-    int indx=hash_code % H->locks_length;
+    int indx=64*(hash_code % H->locks_length);
     pthread_spin_lock(&H->locks[indx]);
     /*
     while (1){
@@ -37,7 +39,7 @@ void lock_set (struct HashSet * H, int hash_code){
 
 void unlock_set(struct HashSet * H, int hash_code){
 
-    int indx=hash_code % H->locks_length;
+    int indx=64*(hash_code % H->locks_length);
     pthread_spin_unlock(&H->locks[indx]);
     //H->locks[indx] = 0;
 }
@@ -172,9 +174,11 @@ void _initialize(struct HashSet * H, int capacity,int lock_length){
         H->table[i]=NULL;
     }
     H->locks_length=lock_length;
-    H->locks=(pthread_spinlock_t *)malloc(sizeof(pthread_spinlock_t)* lock_length);
+    //H->locks=(pthread_spinlock_t *)malloc(sizeof(pthread_spinlock_t)* lock_length  );
+    H->locks=(pthread_spinlock_t *)malloc(sizeof(pthread_spinlock_t)* lock_length *64 );//padding for locks
+    //H->locks=(pthread_spinlock_t *)malloc(sizeof(64* lock_length ); //padding for locks
     //for(i=0;i<lock_length;i++) H->locks[i*64]=0;
-    for(i=0;i<lock_length;i++) pthread_spin_init(&H->locks[i],PTHREAD_PROCESS_SHARED);
+    for(i=0;i<(lock_length);i++) pthread_spin_init(&H->locks[64*i],PTHREAD_PROCESS_SHARED);
 
 }
 
