@@ -11,10 +11,11 @@
 typedef struct {
 	
     unsigned tid;
-    char pad0[(64-sizeof(unsigned))/sizeof(char)];
+    int enable_resize;
+    char pad0[(64-sizeof(unsigned)-sizeof(int))/sizeof(char)];
 	unsigned nr_operations;
     char pad1[(64-sizeof(unsigned))/sizeof(char)];
-
+   
 	unsigned operations, 
 	         lookups, 
 	         insertions, 
@@ -38,6 +39,11 @@ typedef struct {
     char pad7[(64-sizeof(unsigned long long))/sizeof(char)];
 #endif
 
+#ifdef SPLIT_ORDERED
+    unsigned long long cass;
+    char pad17[(64-sizeof(unsigned long long))/sizeof(char)];
+
+#endif 
 #ifdef TSX
 	txstats_t txstats;
     char pad8[(64-sizeof(txstats_t))/sizeof(char)];
@@ -45,7 +51,7 @@ typedef struct {
 
 	tsc_t insert_lock_set_tsc;
     char pad9[(64-sizeof(tsc_t))/sizeof(char)];
-	tsc_t insert_timer;
+	tsc_t resize_timer;
     char pad10[(64-sizeof(tsc_t))/sizeof(char)];
 	tsc_t lookup_timer;
     char pad11[(64-sizeof(tsc_t))/sizeof(char)];

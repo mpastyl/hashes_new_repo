@@ -88,26 +88,44 @@ static void params_print()
         }
     }
 
-    printf("Insert timers\n");
+    double total_resize_time=0;
     for (i=0; i < clargs.num_threads;i++){
-        printf("Thread %2d: average time to insert %4.8lf\n",
-           params[i].tid,tsc_getsecs(&params[i].insert_timer)/(double)params[i].insertions);
+        
+           total_resize_time += tsc_getsecs(&params[i].resize_timer);
             //params[i].tid,tsc_getsecs(&params[i].insert_timer));
     }
+
+#ifndef SPLIT_ORDERED
+    printf("Total resize timer %4.20lf\n",total_resize_time);
+    printf("Times resized: %d\n", times_resized);
+#endif
     
-    printf("Lookup timers\n");
+    /*printf("Lookup timers\n");
     for (i=0; i < clargs.num_threads;i++){
         printf("Thread %2d: average time to lookup %4.8lf\n",
             params[i].tid,tsc_getsecs(&params[i].lookup_timer)/(double)params[i].lookups);
             //params[i].tid,tsc_getsecs(&params[i].lookup_timer));
     }
-
+    */
+    double avg_wait_per_operation=0;
 	printf("Verbose timers: insert_lock_set_tsc\n");
 	for (i=0; i < clargs.num_threads; i++) {
-		printf("  Thread %2d: %4.2lf\n", params[i].tid,
-		       tsc_getsecs(&params[i].insert_lock_set_tsc));
+		avg_wait_per_operation += tsc_getsecs(&params[i].insert_lock_set_tsc)/(double)params[i].operations;
+        printf("  Thread %2d: avg wait per operation %4.20lf\n", params[i].tid,
+		       tsc_getsecs(&params[i].insert_lock_set_tsc)/(double)params[i].operations);
 	}
 	printf("\n");
+
+    printf("Total avg time per operation : %4.20lf\n",avg_wait_per_operation/(double)clargs.num_threads);
+
+
+#ifdef SPLIT_ORDERED
+    double avg_cass_per_operation=0;
+    for (i=0; i< clargs.num_threads; i++){
+        avg_cass_per_operation += (double) params[i].cass / ((double) params[i].real_insertions+ (double) params[i].real_deletions);
+    }
+    printf("Average CASs per operation %4.8lf\n",avg_cass_per_operation/(double) clargs.num_threads);
+#endif
 
 #ifdef TSX
 	printf("%11s %8s %8s %8s %8s %8s %8s %8s %8s\n", "Tid   ", "starts  ",
@@ -145,7 +163,7 @@ void *thread_fn(void *args)
 
 	srand48_r(params->tid * clargs.thread_seed, &drand_buffer);
 	tsc_init(&params->insert_lock_set_tsc);
-	tsc_init(&params->insert_timer);
+	tsc_init(&params->resize_timer);
 	tsc_init(&params->lookup_timer);
 
 	pthread_barrier_wait(&barrier);
@@ -247,6 +265,7 @@ double pthreads_benchmark()
 	for (i=0; i < nthreads; i++) {
 		memset(&params[i], 0, sizeof(*params));
 		params[i].tid = i;
+        params[i].enable_resize = clargs.enable_resize;
 #ifdef WORKLOAD_FIXED
 		params[i].nr_operations = nr_operations / nthreads;
 #elif WORKLOAD_TIME

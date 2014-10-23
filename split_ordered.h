@@ -77,6 +77,7 @@ int list_insert(unsigned long long * head, struct NodeType * node,params_t *para
         
         //if((*prev)!=compare_value){ if(temp==0)printf("wtf!! %lld %lld\n",*prev,compare_value);}
         temp++;
+        params->cass++;
         res =__sync_bool_compare_and_swap(params->prev,compare_value,new_value);
         if (res){
             //Head=head;
@@ -96,6 +97,7 @@ int list_delete(unsigned long long *head ,unsigned int key,params_t *params){
         unsigned long long compare_value = set_both(compare_value,get_pointer(params->next),0);
         unsigned long long new_value = set_both(new_value,get_pointer(params->next),1);
 
+        params->cass++;
         if(!__sync_bool_compare_and_swap(&(((struct NodeType *)get_pointer(params->curr))->marked_next),compare_value,new_value)) 
             continue;
 
@@ -103,6 +105,7 @@ int list_delete(unsigned long long *head ,unsigned int key,params_t *params){
         compare_value = set_both(compare_value,get_pointer(params->curr),0);
         new_value = set_both(new_value,get_pointer(params->next),0);
 
+        params->cass++;
         if(__sync_bool_compare_and_swap(params->prev,compare_value,new_value))
             free((struct NodeType *)get_pointer(params->curr));
 
@@ -144,6 +147,7 @@ int list_find(unsigned long long ** head,unsigned int key,params_t *params){
                 unsigned long long compare_value = set_both(compare_value,params->curr,0);
                 unsigned long long new_value = set_both(new_value,params->next,0);
 
+                params->cass++;
                 if (__sync_bool_compare_and_swap(params->prev,compare_value,new_value)){
                     free((struct NodeType *)get_pointer(params->curr));
                     //printf("Hey!\n");
@@ -226,7 +230,7 @@ int get_parent(int bucket){
 int count;
 int size;
 
-int MAX_LOAD = 4000;
+int MAX_LOAD = 10;
 
 
 unsigned long long uninitialized;//pointer value that stands for invalid bucket
@@ -255,7 +259,6 @@ int insert(unsigned int key,params_t *params){
     struct NodeType * node=(struct NodeType *)malloc(sizeof(struct NodeType));
     node->key = so_regularkey(key);
     int bucket = key % size;
-
     if(T[bucket]==uninitialized) initialize_bucket(bucket,params);
     
     if(!list_insert(&(T[bucket]),node,params)){
@@ -268,13 +271,16 @@ int insert(unsigned int key,params_t *params){
 
     //printf("count is %d\n",new);
     
-    /*
-    if ((new/csize) >MAX_LOAD){
-        //printf("count is %d and size is %d\n",count,size);
-        printf("resizing\n");
-        int res= __sync_bool_compare_and_swap(&size,csize,2*csize);
+    if (params->enable_resize){
+        if ((new/csize) >MAX_LOAD){
+            //printf("count is %d and size is %d\n",count,size);
+            int res= __sync_bool_compare_and_swap(&size,csize,2*csize);
+            if (res) {
+                printf("@resize\n");
+                printf("size after resize %d\n",size);
+            }
+        }
     }
-    */
     return 1;
 }
 
@@ -331,7 +337,7 @@ void initialize(struct HashSet * H,int _size){
     //:TODO is the above safe?
 
     
-    T = (unsigned long long *) malloc(sizeof(unsigned long long)*_size);
+    T = (unsigned long long *) malloc(sizeof(unsigned long long)*INT32_MAX/16);
     int i;
     for(i=0;i<size;i++) T[i]= uninitialized;
     unsigned long long head=0;

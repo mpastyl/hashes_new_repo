@@ -23,9 +23,12 @@
 #endif
 #ifdef CUCKOO
 #  define ARGUMENT_DEFAULT_THRESHOLD 300
+#  define ARGUMENT_DEFAULT_CHAIN 200
 #endif 
 
-static char *opt_string = "ht:s:m:i:l:r:e:j:z:v:x:k:";
+#  define ARGUMENT_DEFAULT_ENABLE_RESIZE 1
+
+static char *opt_string = "ht:s:m:i:l:r:e:j:z:v:x:k:u:p:";
 static struct option long_options[] = {
 	{ "help",            no_argument,       NULL, 'h' },
 	{ "num-threads",     required_argument, NULL, 't' },
@@ -45,9 +48,11 @@ static struct option long_options[] = {
     { "starting-locks",  required_argument, NULL, 'x' },
 #endif
 #ifdef CUCKOO
-    { "threshold",       required_argument, NULL, 'y' },
+    { "threshold",       required_argument, NULL, 'k' },
+    { "chain",           required_argument, NULL, 'u' },
 #endif
-	{ NULL, 0, NULL, 0 }
+    { "enable-resize",   required_argument, NULL, 'p' },    
+    { NULL, 0, NULL, 0 }
 };
 
 clargs_t clargs = {
@@ -68,7 +73,9 @@ clargs_t clargs = {
 #endif
 #ifdef CUCKOO
     ARGUMENT_DEFAULT_THRESHOLD,
+    ARGUMENT_DEFAULT_CHAIN,
 #endif
+    ARGUMENT_DEFAULT_ENABLE_RESIZE,
 };
 
 static void clargs_print_usage(char *progname)
@@ -103,8 +110,10 @@ static void clargs_print_usage(char *progname)
 #ifdef CUCKOO
     printf("    -k--lower set thershold for striped implementation[%d]\n",
             ARGUMENT_DEFAULT_THRESHOLD);
+    printf("    -u--maximum chain of relocations[%d]\n",
+            ARGUMENT_DEFAULT_CHAIN);
 #endif
-    
+    printf("    -p--enable resize [%d]\n",ARGUMENT_DEFAULT_ENABLE_RESIZE);
 
 }
 
@@ -164,7 +173,13 @@ void clargs_init(int argc, char **argv)
         case 'k':
             clargs.threshold = atoi(optarg);
             break;
+        case 'u':
+            clargs.chain = atoi(optarg);
+            break;
 #endif
+        case 'p':
+            clargs.enable_resize = atoi(optarg);
+            break;
 		default:
 			clargs_print_usage(argv[0]);
 			exit(1);
@@ -200,5 +215,7 @@ void clargs_print()
 #endif
 #ifdef CUCKOO
     printf("  threshold : %d\n",clargs.threshold);
+    printf("  chain : %d\n",clargs.chain);
 #endif
+    printf("  enable resize : %d\n",clargs.enable_resize);
 }

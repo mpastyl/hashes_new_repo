@@ -21,8 +21,12 @@ typedef struct {
     int starting_locks;
 #endif
 #ifdef CUCKOO
-    int threshold
+    int threshold;
+    int chain;
 #endif
+
+    int enable_resize;
+
 } clargs_t;
 extern clargs_t clargs;
 

@@ -183,9 +183,10 @@ void _initialize(struct HashSet * H, int capacity,int lock_length){
 }
 
 
-int policy(struct HashSet *H){
-    //return ((H->setSize/H->capacity) >4000);
-    return 0;
+int policy(struct HashSet *H,params_t * params){
+    if (params->enable_resize)
+        return ((H->setSize/H->capacity) >10);
+    else return 0;
 }
 
 void resize(struct HashSet *,params_t *params);
@@ -221,7 +222,7 @@ int add(struct HashSet *H,int hash_code, int val, int reentrant,params_t *params
     }
     if (!res) return 0;
     __sync_fetch_and_add(&(H->setSize),1);
-    if (policy(H)) resize(H,params);
+    if (policy(H,params)) resize(H,params);
     return 1;
 }
 
@@ -241,25 +242,41 @@ int _delete(struct HashSet *H,int hash_code, int val,params_t *params){
 }
 
 
+int times_resized=0;
 void resize(struct HashSet *H,params_t *params){
     
-    printf("@resize!\n");
     int i,res;
     struct node_t * curr;
     int old_capacity = H->capacity;
-    for(i=0;i<H->locks_length;i++) {
-	    tsc_start(&params->insert_lock_set_tsc);
-        lock_set(H,i);
-	    tsc_pause(&params->insert_lock_set_tsc);
+
+    
+    lock_set(H,i);
+    if (H->capacity != old_capacity){
+        unlock_set(H,i);
+        return ;//somebody beat us to it
     }
+            
+    
+    for(i=1;i<H->locks_length;i++) {
+	    //tsc_start(&params->insert_lock_set_tsc);
+        lock_set(H,i);
+	    //tsc_pause(&params->insert_lock_set_tsc);
+    }
+	/*tsc_pause(&params->resize_timer);
     if(old_capacity!=H->capacity) {
         for(i=0;i<H->locks_length;i++) {
-	        tsc_start(&params->insert_lock_set_tsc);
+	        //tsc_start(&params->insert_lock_set_tsc);
             unlock_set(H,i);
-	        tsc_pause(&params->insert_lock_set_tsc);
+	        //tsc_pause(&params->insert_lock_set_tsc);
         }
         return; //somebody beat us to it
     }
+    */
+	//tsc_start(&params->resize_timer);
+	tsc_start(&params->resize_timer);
+    printf("@resize!\n");
+    
+    times_resized++;
     int new_capacity =  old_capacity * 2;
     H->capacity =  new_capacity;
 
@@ -282,6 +299,8 @@ void resize(struct HashSet *H,params_t *params){
     }
     free(old_table);
     for(i=0;i<H->locks_length;i++) unlock_set(H,i);
+    printf("capacity after resize %d\n",H->capacity);
+	tsc_pause(&params->resize_timer);
 }
 
 void print_set(struct HashSet * H){

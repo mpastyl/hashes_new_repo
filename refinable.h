@@ -97,9 +97,9 @@ void acquire(struct HashSet *H,int hash_code,params_t *params){
         pthread_spinlock_t * old_locks=cpy_locks->locks_array;
         int  old_locks_length =cpy_locks->locks_length;
 
-	    tsc_start(&params->insert_lock_set_tsc);
+	    //tsc_start(&params->insert_lock_set_tsc);
         lock_set(old_locks,hash_code % old_locks_length);
-	    tsc_pause(&params->insert_lock_set_tsc);
+	    //tsc_pause(&params->insert_lock_set_tsc);
 
         cpy_owner=H->owner;
         who=get_pointer(cpy_owner);
@@ -109,9 +109,9 @@ void acquire(struct HashSet *H,int hash_code,params_t *params){
             return;
         }
         else{
-	        tsc_start(&params->insert_lock_set_tsc);
+	        //tsc_start(&params->insert_lock_set_tsc);
             unlock_set(old_locks,hash_code % old_locks_length);
-	        tsc_pause(&params->insert_lock_set_tsc);
+	        //tsc_pause(&params->insert_lock_set_tsc);
         }
     }
 
@@ -163,20 +163,20 @@ int list_search(struct node_t * Head,int val,params_t *params){
     
     struct node_t * curr;
     
-    tsc_start(&params->lookup_timer);
+    //tsc_start(&params->lookup_timer);
     curr=Head;
     while(curr){
         if(curr->value>val) {
-            tsc_pause(&params->lookup_timer);
+            //tsc_pause(&params->lookup_timer);
             return 0;
         }
         if(curr->value==val) {
-            tsc_pause(&params->lookup_timer);
+            //tsc_pause(&params->lookup_timer);
             return 1;
         }
         curr=curr->next;
     }
-    tsc_pause(&params->lookup_timer);
+    //tsc_pause(&params->lookup_timer);
     return 0;
 }
 
@@ -185,7 +185,7 @@ int list_search(struct node_t * Head,int val,params_t *params){
 //NOTE: duplicate values are allowed...
 int list_add(struct HashSet * H, int key,int val,int hash_code,params_t *params){
    
-    tsc_start(&params->insert_timer);
+    //tsc_start(&params->insert_timer);
     struct node_t * curr;
     struct node_t * prev;
     struct node_t * node=(struct node_t *)malloc(sizeof(struct node_t));
@@ -209,7 +209,7 @@ int list_add(struct HashSet * H, int key,int val,int hash_code,params_t *params)
     prev=NULL;
     while(curr){
         if (curr->value==val){
-            tsc_pause(&params->insert_timer);
+            //tsc_pause(&params->insert_timer);
             return 0;
         }
         if (curr->value>val) break;
@@ -219,7 +219,7 @@ int list_add(struct HashSet * H, int key,int val,int hash_code,params_t *params)
     node->next=curr;
     if (prev) prev->next=node;
     else H->table[key]=node;
-    tsc_pause(&params->insert_timer);
+    //tsc_pause(&params->insert_timer);
     return 1;
 }
 
@@ -273,9 +273,11 @@ void initialize(struct HashSet * H, int capacity){
 }
 
 
-int policy(struct HashSet *H){
-    //return ((H->setSize/H->capacity) >4000);
-    return 0;
+int policy(struct HashSet *H,params_t * params){
+    
+    if (params->enable_resize)
+        return ((H->setSize/H->capacity) >10);
+    else return 0;
 }
 
 void resize(struct HashSet *,params_t *params);
@@ -311,7 +313,7 @@ int  add(struct HashSet *H,int hash_code, int val, int reentrant,params_t *param
     }
     if(!res) return 0;
     __sync_fetch_and_add(&(H->setSize),1);
-    if(!reentrant) {if (policy(H)) resize(H,params);}
+    if(!reentrant) {if (policy(H,params)) resize(H,params);}
     return 1;
 }
 
@@ -335,14 +337,21 @@ void quiesce(struct HashSet *H,params_t *params){
     pthread_spinlock_t *locks= H->locks_struct->locks_array;
     for(i=0;i<H->locks_struct->locks_length;i++){
         //while(locks[i]==1); //TODO: is it a race?
-	    tsc_start(&params->insert_lock_set_tsc);
+	    //tsc_start(&params->insert_lock_set_tsc);
         pthread_spin_lock(&locks[i*64]);
-	    tsc_pause(&params->insert_lock_set_tsc);
+	    //tsc_pause(&params->insert_lock_set_tsc);
+    }
+    for(i=0;i<H->locks_struct->locks_length;i++){
+        //while(locks[i]==1); //TODO: is it a race?
+	    //tsc_start(&params->insert_lock_set_tsc);
+        pthread_spin_unlock(&locks[i*64]);
+	    //tsc_pause(&params->insert_lock_set_tsc);
     }
 }
 
+int times_resized=0;
+
 void resize(struct HashSet *H,params_t *params){
-    printf("@resize!!\n");
     int i,res;
     int mark,me;
     struct node_t * curr;
@@ -360,10 +369,13 @@ void resize(struct HashSet *H,params_t *params){
                 H->owner=set_both(H->owner,NULL_VALUE,0);
                 return; //somebody beat us to it
         }
+	    tsc_start(&params->resize_timer);
         quiesce(H,params);  
         //H->locks_length = new_capacity; //in this implementetion 
                                         //locks_length == capacity
                                         //edit!!
+        printf("@resize!!\n");
+        times_resized++;
         int new_locks_length=new_capacity;
         struct node_t ** old_table = H->table;
         H->setSize=0;
@@ -401,6 +413,8 @@ void resize(struct HashSet *H,params_t *params){
             printf("This should not have happened\n");
 
         //free(old_locks);
+        printf("capacity after resize %d\n",H->capacity);
+        tsc_pause(&params->resize_timer);
     }
 
     

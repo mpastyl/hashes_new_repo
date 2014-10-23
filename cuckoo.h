@@ -25,7 +25,7 @@ struct CuckooSet{
     char pad_cuck_1[(64- sizeof(pthread_spinlock_t ** ))/sizeof(char)];
 } __attribute__ ((packed));
 
-int THRESHOLD=300;
+int THRESHOLD=0;
 int PROB_SIZE=4000;
 int LIMIT=160;
 
@@ -256,8 +256,8 @@ int contains(struct CuckooSet  *C, int x,params_t *params){
     return 0;
 }
 
+int times_resized=0;
 void resize(struct CuckooSet *C,params_t *params){
-    printf("@resize\n");
     int i,j,res;
     struct node * curr;
     int old_capacity = C->capacity;
@@ -266,6 +266,9 @@ void resize(struct CuckooSet *C,params_t *params){
         leave_all_locks(C);
         return;
     }
+    tsc_start(&params->resize_timer);
+    printf("@resize\n");
+    times_resized++;
     struct array_list ** old_table = C->table;
     C->capacity = 2*old_capacity;
     
@@ -292,6 +295,7 @@ void resize(struct CuckooSet *C,params_t *params){
     //TODO: free old table
     
     leave_all_locks(C);
+    tsc_pause(&params->resize_timer);
 
 }
 
