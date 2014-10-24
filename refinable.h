@@ -26,7 +26,7 @@ struct HashSet{
     char pad_str_0[(64-sizeof(struct locks *) - sizeof(struct node_t **) -3*sizeof(int))/sizeof(char)];
 } __attribute__ ((packed));
 
-int NULL_VALUE = 5139239;
+int NULL_VALUE = INT32_MAX/8;
 
 
 unsigned long long get_count(unsigned long long a){
@@ -355,6 +355,7 @@ void resize(struct HashSet *H,params_t *params){
     int i,res;
     int mark,me;
     struct node_t * curr;
+    double time = tsc_getsecs(&params->resize_timer);
     int old_capacity = H->capacity;
     int new_capacity =  old_capacity * 2;
 
@@ -409,12 +410,14 @@ void resize(struct HashSet *H,params_t *params){
         expected_value = new_owner;
         H->capacity =  new_capacity;
         new_owner = set_both(new_owner,NULL_VALUE,0);
+        printf("capacity after resize %d\n",H->capacity);
+        tsc_pause(&params->resize_timer);
+        params->resize_time += tsc_getsecs(&params->resize_timer) - time;
+        printf("Resize No %d  time taken %4.8lf\n",times_resized,tsc_getsecs(&params->resize_timer) - time);
         if(!__sync_bool_compare_and_swap(&(H->owner),expected_value,new_owner))
             printf("This should not have happened\n");
 
         //free(old_locks);
-        printf("capacity after resize %d\n",H->capacity);
-        tsc_pause(&params->resize_timer);
     }
 
     

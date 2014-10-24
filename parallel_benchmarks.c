@@ -91,7 +91,7 @@ static void params_print()
     double total_resize_time=0;
     for (i=0; i < clargs.num_threads;i++){
         
-           total_resize_time += tsc_getsecs(&params[i].resize_timer);
+           total_resize_time += params[i].resize_time;
             //params[i].tid,tsc_getsecs(&params[i].insert_timer));
     }
 
@@ -159,12 +159,17 @@ void *thread_fn(void *args)
 	long int drand_res;
 	int choice, key;
 
-	setaffinity_oncpu(params->tid);
-
+	//setaffinity_oncpu(params->tid);
+    setaffinity_oncpu(params->cpu);
+    
+    printf("tid %d cpu %d\n",params->tid, params->cpu);
 	srand48_r(params->tid * clargs.thread_seed, &drand_buffer);
 	tsc_init(&params->insert_lock_set_tsc);
 	tsc_init(&params->resize_timer);
 	tsc_init(&params->lookup_timer);
+
+
+    params->resize_time=0;
 
 	pthread_barrier_wait(&barrier);
 	if (params->tid == 0)
@@ -234,6 +239,7 @@ double pthreads_benchmark()
     XMALLOC(threads, clargs.num_threads);
 	XMALLOC(params, clargs.num_threads);
 
+    init_params.tid=0;
 	/* Initialize the Hash Table */
 	printf("Initializing at %d\n", clargs.init_hash_size);
 #ifdef CUCKOO
@@ -265,6 +271,7 @@ double pthreads_benchmark()
 	for (i=0; i < nthreads; i++) {
 		memset(&params[i], 0, sizeof(*params));
 		params[i].tid = i;
+        params[i].cpu = cpus[i];
         params[i].enable_resize = clargs.enable_resize;
 #ifdef WORKLOAD_FIXED
 		params[i].nr_operations = nr_operations / nthreads;

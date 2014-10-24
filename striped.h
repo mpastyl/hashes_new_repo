@@ -222,7 +222,8 @@ int add(struct HashSet *H,int hash_code, int val, int reentrant,params_t *params
     }
     if (!res) return 0;
     __sync_fetch_and_add(&(H->setSize),1);
-    if (policy(H,params)) resize(H,params);
+    
+    if (policy(H,params)) if (!reentrant) resize(H,params);
     return 1;
 }
 
@@ -248,10 +249,12 @@ void resize(struct HashSet *H,params_t *params){
     int i,res;
     struct node_t * curr;
     int old_capacity = H->capacity;
-
+    double time= tsc_getsecs(&params[i].resize_timer);
+	tsc_start(&params->resize_timer);
     
     lock_set(H,i);
     if (H->capacity != old_capacity){
+	    tsc_pause(&params->resize_timer);
         unlock_set(H,i);
         return ;//somebody beat us to it
     }
@@ -273,7 +276,7 @@ void resize(struct HashSet *H,params_t *params){
     }
     */
 	//tsc_start(&params->resize_timer);
-	tsc_start(&params->resize_timer);
+	//tsc_start(&params->resize_timer);
     printf("@resize!\n");
     
     times_resized++;
@@ -301,6 +304,8 @@ void resize(struct HashSet *H,params_t *params){
     for(i=0;i<H->locks_length;i++) unlock_set(H,i);
     printf("capacity after resize %d\n",H->capacity);
 	tsc_pause(&params->resize_timer);
+    params->resize_time += tsc_getsecs(&params->resize_timer) - time;
+    printf("Resize No %d  time taken %4.8lf\n",times_resized,tsc_getsecs(&params->resize_timer) - time);
 }
 
 void print_set(struct HashSet * H){

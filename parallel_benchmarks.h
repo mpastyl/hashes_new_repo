@@ -12,7 +12,8 @@ typedef struct {
 	
     unsigned tid;
     int enable_resize;
-    char pad0[(64-sizeof(unsigned)-sizeof(int))/sizeof(char)];
+    unsigned cpu;
+    char pad0[(64-2*sizeof(unsigned)-sizeof(int))/sizeof(char)];
 	unsigned nr_operations;
     char pad1[(64-sizeof(unsigned))/sizeof(char)];
    
@@ -52,8 +53,12 @@ typedef struct {
 	tsc_t insert_lock_set_tsc;
     char pad9[(64-sizeof(tsc_t))/sizeof(char)];
 	tsc_t resize_timer;
-    char pad10[(64-sizeof(tsc_t))/sizeof(char)];
-	tsc_t lookup_timer;
+    char pad19[(64-sizeof(tsc_t))/sizeof(char)];
+    
+	double  resize_time;
+    char pad10[(64-sizeof(double))/sizeof(char)];
+	
+    tsc_t lookup_timer;
     char pad11[(64-sizeof(tsc_t))/sizeof(char)];
 
 //	tsc_t operations_tsc;
