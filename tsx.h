@@ -17,8 +17,11 @@ struct HashSet{
     struct node_t ** table;
     int capacity;
     int setSize;
+    char pad_tsx0[(64 - sizeof(struct node_t **) - 2* sizeof(int))
+                /sizeof(char)];
 	pthread_spinlock_t lock;
-};
+    char pad_tsx1[(64 - sizeof(pthread_spinlock_t))/sizeof(char)];
+} __attribute__ ((packed));
 
 #define lock_init(H)  pthread_spin_init(&H->lock, PTHREAD_PROCESS_SHARED)
 #define lock_set(H)   pthread_spin_lock(&H->lock)
@@ -154,11 +157,12 @@ void initialize(struct HashSet * H, int capacity){
 }
 
 
-int policy(struct HashSet *H){
-//    return ((H->setSize/H->capacity) >4);
-	return 0;
-}
 
+int policy(struct HashSet *H,params_t * params){
+    if (params->enable_resize)
+        return ((H->setSize/H->capacity) >10);
+    else return 0;
+}
 void resize(struct HashSet *,params_t *params);
 
 int contains(struct HashSet *H,int hash_code, int val, params_t *params){
@@ -183,7 +187,7 @@ int add(struct HashSet *H,int hash_code, int val, int reentrant, params_t *param
 
     if (!res) return 0;
     H->setSize++;
-    if (policy(H)) resize(H,params);
+    if(!reentrant) if (policy(H,params)) resize(H,params);
     return 1;
 }
 
@@ -198,18 +202,26 @@ int _delete(struct HashSet *H,int hash_code, int val, params_t *params){
 }
 
 
+int times_resized=0;
 void resize(struct HashSet *H,params_t *params){
     
     int i,res;
     struct node_t * curr;
     int old_capacity = H->capacity;
-	tsc_start(&params->insert_lock_set_tsc);
+    
+    double time= tsc_getsecs(&params[i].resize_timer);
+	tsc_start(&params->resize_timer);
+    
     lock_set(H);
-	tsc_pause(&params->insert_lock_set_tsc);
+    
     if(old_capacity!=H->capacity){
         unlock_set(H);
         return; //somebody beat us to it
     }
+    
+    printf("@resize!\n");
+    
+    times_resized++;
     int new_capacity =  old_capacity * 2;
     H->capacity =  new_capacity;
 
@@ -232,9 +244,11 @@ void resize(struct HashSet *H,params_t *params){
         }
     }
     free(old_table);
-	tsc_start(&params->insert_lock_set_tsc);
     unlock_set(H);
-	tsc_pause(&params->insert_lock_set_tsc);
+    printf("capacity after resize %d\n",H->capacity);
+	tsc_pause(&params->resize_timer);
+    params->resize_time += tsc_getsecs(&params->resize_timer) - time;
+    printf("Resize No %d  time taken %4.8lf\n",times_resized,tsc_getsecs(&params->resize_timer) - time);
 }
 
 void print_set(struct HashSet * H){

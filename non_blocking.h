@@ -240,6 +240,9 @@ int Assist(struct HashSet *H,int k,int  h,int i, int ver_i){
     return ((h+index*(index+1)/2) < H->size);
 }
 */
+
+int times_resized=0;
+
 int Insert(struct HashSet *H,int k,params_t *params){
     
     int h = Hash(H,k);
@@ -250,9 +253,10 @@ int Insert(struct HashSet *H,int k,params_t *params){
     unsigned long long expected;
     unsigned long long new_to_set;
     do{
-        if (++i>=(H->size))
+        if (++i>=(H->size)){
             
             printf("Table full!\n");//TODO: i may be <H->size but Bucket(H,h,i) goes beyond H->size
+        }
         old_state = Bucket(H,h,i)->vs;
         version = get_pointer(old_state);
         expected =  set_both(expected,version,EMPTY);

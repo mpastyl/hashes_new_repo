@@ -256,7 +256,9 @@ void initialize_bucket(int bucket,params_t *params){
 
 int insert(unsigned int key,params_t *params){
     
+	tsc_start(&params->insert_lock_set_tsc);
     struct NodeType * node=(struct NodeType *)malloc(sizeof(struct NodeType));
+	tsc_pause(&params->insert_lock_set_tsc);
     node->key = so_regularkey(key);
     int bucket = key % size;
     if(T[bucket]==uninitialized) initialize_bucket(bucket,params);
@@ -339,7 +341,7 @@ void initialize(struct HashSet * H,int _size){
     
     T = (unsigned long long *) malloc(sizeof(unsigned long long)*INT32_MAX/16);
     int i;
-    for(i=0;i<size;i++) T[i]= uninitialized;
+    for(i=0;i<(INT32_MAX/16);i++) T[i]= uninitialized;
     unsigned long long head=0;
     size=_size;//TODO: check this
     
@@ -403,7 +405,8 @@ int find_elements_count(struct HashSet *H){
     int flag=0;
     for(i=0;i<size;i++){
         flag=0;
-        unsigned long long *head=&T[i];
+        head=&T[i];
+        if(T[i]==uninitialized) continue;
 
 ////////////////////
         struct NodeType * curr=(struct NodeType *)get_pointer((unsigned long long)*head);
@@ -444,7 +447,8 @@ long long int find_elements_sum(struct HashSet *H){
     int flag=0;
     for(i=0;i<size;i++){
         flag=0;
-        unsigned long long *head=&T[i];
+        head=&T[i];
+        if(T[i]==uninitialized) continue;
         struct NodeType * curr=(struct NodeType *)get_pointer((unsigned long long)*head);
         while((flag!=2) &&(curr)){
             unsigned int normal_key = curr->key/2;

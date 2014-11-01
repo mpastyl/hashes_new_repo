@@ -213,7 +213,7 @@ int  add(struct HashSet *H,int hash_code, int val, int reentrant, params_t *para
 	}
     if (!res) return 0;
     H->setSize++;
-    if (policy(H,params)) resize(H,params);
+    if (!reentrant) if (policy(H,params)) resize(H,params);
     return 1;
 }
 
